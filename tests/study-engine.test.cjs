@@ -1,0 +1,11 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const vm=require('node:vm');
+const fs=require('node:fs');
+const path=require('node:path');
+function engine(){const ctx=vm.createContext({localStorage:{getItem:()=>null,setItem:()=>{}},document:{querySelector:()=>({})},console,Date,Math,setInterval,clearInterval});vm.runInContext(fs.readFileSync(path.join(__dirname,'../questions.js'),'utf8'),ctx);vm.runInContext(fs.readFileSync(path.join(__dirname,'../app.js'),'utf8').replace(/render\(\);\s*$/,''),ctx);vm.runInContext('showQuestion=()=>{};',ctx);return ctx}
+test('all authored choices have corresponding explanations and valid answer keys',()=>{const c=engine();assert.equal(vm.runInContext('bank.length',c),22);assert.equal(vm.runInContext('bank.every(q=>q.options.length===q.rationales.length && q.correct.every(i=>i>=0 && i<q.options.length) && q.takeaway.length>0)',c),true)});
+test('multiple response awards partial credit and penalizes wrong selections without going negative',()=>{const c=engine();for(const [selected,expected] of [[[0,1,2],1],[[0,1],2/3],[[0,3],0],[[3],0]]){vm.runInContext(`session={current:bank[20],selected:${JSON.stringify(selected)},submitted:false,confidence:'Unsure',results:[]};submitAnswer()`,c);assert.equal(vm.runInContext('session.results[0].score',c),expected)}});
+test('submitting twice records only one attempt and locks the response',()=>{const c=engine();vm.runInContext("session={current:bank[0],selected:[0],submitted:false,confidence:'Confident',results:[]};submitAnswer();submitAnswer();selectAnswer(1)",c);assert.equal(vm.runInContext('state.history.length',c),1);assert.equal(vm.runInContext('session.selected[0]',c),0)});
+test('adaptive selection moves toward harder items and never repeats a used item',()=>{const c=engine();vm.runInContext("mode='adaptive';session={available:bank,used:[],results:[],target:10,current:null};nextQuestion();",c);assert.equal(vm.runInContext('session.current.difficulty',c),2);vm.runInContext('session.results.push({score:1});nextQuestion()',c);assert.equal(vm.runInContext('session.current.difficulty',c),3);assert.equal(vm.runInContext('new Set(session.used).size===session.used.length',c),true)});
+

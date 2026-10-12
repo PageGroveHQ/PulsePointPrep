@@ -1,0 +1,1 @@
+{"name":"pulsepoint-prep","version":"0.2.0","private":true,"description":"A focused, engaging local NCLEX study workspace.","scripts":{"start":"node server.cjs","check":"node --check app.js && node --check questions.js && node --check experience.js && node --check server.cjs","test":"node --test tests/*.test.cjs"},"engines":{"node":">=20"}}
